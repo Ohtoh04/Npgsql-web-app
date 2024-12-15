@@ -1,0 +1,34 @@
+﻿@model List<dynamic>
+
+@{
+    ViewData["Title"] = "Courses";
+}
+
+<div class="container mt-5">
+    <h2 class="text-center">Courses</h2>
+
+    <div class="row">
+        @if (Model != null && Model.Count > 0)
+        {
+            foreach (var course in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@course.Title</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">Category: @course.Category</h6>
+                            <p class="card-text">Rating: @course.Rating</p>
+                            <a href="@Url.Action("Details", "Course", new { id = course.CourseId })" class="btn btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <p class="text-center">No courses available.</p>
+            </div>
+        }
+    </div>
+</div>

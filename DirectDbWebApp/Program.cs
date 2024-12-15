@@ -1,10 +1,23 @@
+using DirectDbWebApp.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 
+string connectionString = builder.Configuration.GetValue<string>("ConnectionString") ?? "";
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<DataService>(provider => new DataService(connectionString));
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options => {
+        options.LoginPath = "/auth/login"; // Redirect here if not authenticated
+        options.LogoutPath = "/auth/logout"; // Redirect here on logout
+        options.ExpireTimeSpan = TimeSpan.FromHours(1); // Cookie expiration
+        options.SlidingExpiration = true; // Renew cookie if active
+    });
 
-string? connectionString = builder.Configuration.GetValue<string>("ConnectionString");
+builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 
@@ -18,6 +31,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+app.UseAuthentication();   // добавление middleware аутентификации 
+app.UseAuthorization();   // добавление middleware авторизации 
 
 app.UseRouting();
 
