@@ -67,58 +67,58 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        [HttpGet("courses/")]
-        public async Task<IActionResult> GetCoursesWithFilter([FromQuery] string Title, [FromQuery] double MaxPrice, [FromQuery] double MinRating) {
-            //var query = $"SELECT * FROM Course WHERE course_id = {id}";
+        [HttpGet("courses/filtered")]
+        public async Task<IActionResult> GetCoursesWithFilter([FromQuery] string Title = "", [FromQuery] double MaxPrice = 100000, [FromQuery] double MinRating = 0) {
+            var query = $"SELECT * FROM Course WHERE price<{MaxPrice} AND rating>{MinRating} AND title ILIKE '%{Title}%';";
 
-            //try {
-            //    await using var reader = await _dataService.ExecuteQuery(query);
-            //    if (await reader.ReadAsync()) {
-            //        var course = new {
-            //            CourseId = reader["course_id"],
-            //            Title = reader["title"],
-            //            Description = reader["description"],
-            //            CourseType = reader["coursetype"],
-            //            Price = reader["price"],
-            //            Duration = reader["duration"],
-            //            DateCreated = reader["date_created"],
-            //            Rating = reader["rating"]
-            //        };
-            //        return Ok(course);
-            //    }
+            try {
+                await using var reader = await _dataService.ExecuteQuery(query);
+                if (await reader.ReadAsync()) {
+                    var course = new {
+                        CourseId = reader["course_id"],
+                        Title = reader["title"],
+                        Description = reader["description"],
+                        CourseType = reader["coursetype"],
+                        Price = reader["price"],
+                        Duration = reader["duration"],
+                        DateCreated = reader["date_created"],
+                        Rating = reader["rating"]
+                    };
+                    return Ok(course);
+                }
 
-            //    return NotFound(new { message = "Course not found" });
-            //} catch (Exception ex) {
-            //    return StatusCode(500, new { message = ex.Message });
-            //}
-            throw new NotImplementedException();
+                return NotFound(new { message = "Course not found" });
+            } catch (Exception ex) {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
-        [HttpGet("courses/")]
+        [HttpGet("courses/user")]
         public async Task<IActionResult> GetCoursesForUser([FromQuery] int UserId) {
-            //var query = $"SELECT * FROM Course WHERE course_id = {id}";
+            var query = $"SELECT c.course_id, c.title, c.description, c.coursetype, c.price, c.duration, c.date_created, c.rating, cu.relation_type, cu.date_joined" +
+                        $"FROM Course c JOIN CourseUser cu ON c.course_id = cu.course_id WHERE cu.user_id = $1;";
 
-            //try {
-            //    await using var reader = await _dataService.ExecuteQuery(query);
-            //    if (await reader.ReadAsync()) {
-            //        var course = new {
-            //            CourseId = reader["course_id"],
-            //            Title = reader["title"],
-            //            Description = reader["description"],
-            //            CourseType = reader["coursetype"],
-            //            Price = reader["price"],
-            //            Duration = reader["duration"],
-            //            DateCreated = reader["date_created"],
-            //            Rating = reader["rating"]
-            //        };
-            //        return Ok(course);
-            //    }
+            try {
+                await using var reader = await _dataService.ExecuteQuery(query);
+                if (await reader.ReadAsync()) {
+                    var course = new {
+                        CourseId = reader["course_id"],
+                        Title = reader["title"],
+                        Description = reader["description"],
+                        CourseType = reader["coursetype"],
+                        Price = reader["price"],
+                        Duration = reader["duration"],
+                        DateCreated = reader["date_created"],
+                        Rating = reader["rating"]
+                    };
+                    return Ok(course);
+                }
 
-            //    return NotFound(new { message = "Course not found" });
-            //} catch (Exception ex) {
-            //    return StatusCode(500, new { message = ex.Message });
-            //}
-            throw new NotImplementedException();
+                return NotFound(new { message = "Course not found" });
+            } catch (Exception ex) {
+                return StatusCode(500, new { message = ex.Message });
+            }
+
         }
 
         // Create a new course

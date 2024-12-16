@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Http;
 using DirectDbWebApp.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace DirectDbWebApp.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private HttpClient _httpClient = new HttpClient();
 
         public HomeController(ILogger<HomeController> logger)
         {
@@ -22,6 +24,25 @@ namespace DirectDbWebApp.Controllers
         {
             return View();
         }
+
+        public async Task<IActionResult> Profile() {
+            try {
+                var response = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/User/{this.HttpContext.ToString}");// PLACEHOLDER
+
+                if (response.IsSuccessStatusCode) {
+                    var userData = await response.Content.ReadFromJsonAsync<dynamic>();
+
+                    return View(userData);
+                } else {
+                    ModelState.AddModelError(string.Empty, "Unable to fetch user. Please try again later.");
+                    return View("Error");
+                }
+            } catch (Exception ex) {
+                ModelState.AddModelError(string.Empty, $"An unexpected error occurred: {ex.Message}");
+                return View("Error");
+            }
+        }
+
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
