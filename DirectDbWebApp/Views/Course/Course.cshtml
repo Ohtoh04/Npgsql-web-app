@@ -1,5 +1,44 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model DirectDbWebApp.ViewModels.CourseTreeViewModel
+
 @{
+    ViewData["Title"] = "Course";
 }
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+            <div class="position-sticky">
+                <h4 class="text-center mt-3">@Model.Course?.name</h4>
+                <ul class="nav flex-column">
+                    @for (int i = 0; i < Model.Modules.Count; i++)
+                    {
+                        var module = Model.Modules[i];
+                        var units = Model.Units[i];
+                        <li class="nav-item">
+                            <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#module-@i" aria-expanded="false">
+                                @module.name
+                            </button>
+                            <div class="collapse" id="module-@i">
+                                <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                                    @foreach (var unit in units)
+                                    {
+                                        <li><a href="#" class="link-dark rounded">@unit.name</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Course Details</h1>
+            </div>
+            <p>Welcome to the course "@Model.Course?.name". Explore the modules and units using the sidebar.</p>
+        </main>
+    </div>
+</div>

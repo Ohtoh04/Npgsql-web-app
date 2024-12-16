@@ -40,6 +40,31 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetLessonsForUnit(int unitId = 1) {
+            var query = "SELECT lesson_id, title, content FROM Lesson WHERE unit_id = 1 ORDER BY sequence;";
+
+            try {
+                await using var reader = await _dataService.ExecuteQuery(query);
+                var lessons = new List<object>();
+
+                while (await reader.ReadAsync()) {
+                    lessons.Add(new {
+                        LessonId = reader.GetInt32(0),
+                        Title = reader.GetString(1),
+                        Content = reader.IsDBNull(2) ? null : reader.GetString(2)
+                    });
+                }
+
+                return Ok(lessons);
+            } catch (Exception ex) {
+                return StatusCode(500, new {
+                    Message = "An error occurred while fetching lessons.",
+                    Details = ex.Message
+                });
+            }
+        }
+
         // GET: api/Lesson/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLessonById(int id) {

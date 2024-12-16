@@ -5,17 +5,21 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System.Security.Claims;
 using DirectDbWebApp.Tools;
+using DirectDbWebApp.Services;
 
 
 [ApiController]
 [Route("auth")]
 public class AuthController : Controller {
-
+    private readonly DataService _dataService;
+    public AuthController(DataService DataService) { 
+        this._dataService = DataService;
+    }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginUser(string username, string password) {
+    public async Task<IActionResult> LoginUser(string username, string password, string role) {
         // Validate the user's credentials using your database
-        if (!AuthenticateUser(username, password)) {
+        if (!(await AuthenticateUser(username, password))) {
             return Unauthorized("Invalid username or password");
         }
 
@@ -23,7 +27,7 @@ public class AuthController : Controller {
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, username),
-            // Add more claims as needed, e.g., roles
+            new Claim(ClaimTypes.Role, role),
         };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -54,21 +58,22 @@ public class AuthController : Controller {
 
 
 
-    public void RegisterUser(string username, string password) {
-        string salt = PasswordHasher.GenerateSalt();
-        string hashedPassword = PasswordHasher.HashPassword(password, salt);
+    public async Task<IActionResult> RegisterUser(string username, string password) {
+        string hashedPassword = PasswordHasher.HashPassword(password);
+        string query = $"INSERT INTO users (username, password_hash) VALUES ({username}, {hashedPassword})";
 
-        using (var connection = new NpgsqlConnection("YourConnectionString")) {
-            connection.Open();
-            string query = "INSERT INTO users (username, password_hash, salt) VALUES (@username, @passwordHash, @salt)";
-            using (var cmd = new NpgsqlCommand(query, connection)) {
-                cmd.Parameters.AddWithValue("username", username);
-                cmd.Parameters.AddWithValue("passwordHash", hashedPassword);
-                cmd.Parameters.AddWithValue("salt", salt);
-                cmd.ExecuteNonQuery();
+        try {
+            await using var reader = await _dataService.ExecuteQuery(query);
+            if (!(await reader.ReadAsync())) {
+                return Created($"/api/users/{reader["user_id"]}", new { UserId = reader["user_id"] });
             }
+
+            return BadRequest(new { message = "Failed to create user" });
+        } catch (Exception ex) {
+            return StatusCode(500, new { message = ex.Message });
         }
     }
+
 
 
     [HttpPost("logout")]
@@ -77,23 +82,22 @@ public class AuthController : Controller {
         return Ok("Logged out successfully");
     }
 
-    private bool AuthenticateUser(string username, string password) {
-        using (var connection = new NpgsqlConnection("YourConnectionString")) {
-            connection.Open();
-            string query = "SELECT password_hash, salt FROM users WHERE username = @username";
-            using (var cmd = new NpgsqlCommand(query, connection)) {
-                cmd.Parameters.AddWithValue("username", username);
-                using (var reader = cmd.ExecuteReader()) {
-                    if (reader.Read()) {
-                        string storedHash = reader.GetString(0);
-                        string salt = reader.GetString(1);
-                        string enteredHash = PasswordHasher.HashPassword(password, salt);
+    private async Task<bool> AuthenticateUser(string username, string password) {
+        var query = $"SELECT password_hash FROM users WHERE username = {username}";
 
-                        return storedHash == enteredHash; // Match password
-                    }
-                }
+        try {
+            await using var reader = await _dataService.ExecuteQuery(query);
+            if (await reader.ReadAsync()) {
+                var storedHash = reader["password_hash"];
+                string enteredHash = PasswordHasher.HashPassword(password);
+                return (string)storedHash == enteredHash; // Match password
             }
+            return false;
+        } catch (Exception ex) {
+            Console.WriteLine(ex);
         }
+
         return false; // User not found
     }
+
 }

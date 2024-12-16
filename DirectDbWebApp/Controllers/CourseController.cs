@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DirectDbWebApp.Extensions;
 using System.Reflection.Metadata.Ecma335;
+using DirectDbWebApp.ViewModels;
 
 namespace DirectDbWebApp.Controllers {
     public class CourseController : Controller {
@@ -33,12 +34,15 @@ namespace DirectDbWebApp.Controllers {
             try {
 
                 var courseResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{id}");
-                var unitResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{id}");
+                var moduleResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/modules/{id}");
+                var unitResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/units/{id}");
 
-                if (response.IsSuccessStatusCode) {
-                    var coursesData = await response.Content.ReadFromJsonAsync<dynamic>();
+                if (courseResponse.IsSuccessStatusCode) {
+                    var coursesData = await courseResponse.Content.ReadFromJsonAsync<dynamic>();
+                    var moduleData = await moduleResponse.Content.ReadFromJsonAsync<List<dynamic>>();
+                    var unitData = await moduleResponse.Content.ReadFromJsonAsync<List<List<dynamic>>>();
 
-                    return View(coursesData);
+                    return View(new CourseTreeViewModel(coursesData, moduleData, unitData));
                 } else {
                     ModelState.AddModelError(string.Empty, "Unable to fetch courses. Please try again later.");
                     return View("Error");
@@ -49,17 +53,17 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        public async Task<IActionResult> Module() {
-            var moduleResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{id}");
+        //public async Task<IActionResult> Module() {
+        //    var moduleResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{id}");
 
-            return PartialView();
-        }
+        //    return PartialView();
+        //}
 
-        public async Task<IActionResult> Lesson() {
-            var lessonResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/lessons/{id}");
+        //public async Task<IActionResult> Lesson() {
+        //    var lessonResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/lessons/{id}");
 
-            return PartialView();
-        }
+        //    return PartialView();
+        //}
 
         [HttpGet("MyCourses")]
         public async Task<IActionResult> MyCourses() {
