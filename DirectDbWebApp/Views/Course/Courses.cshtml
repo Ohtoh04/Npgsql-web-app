@@ -1,4 +1,4 @@
-﻿@model List<dynamic>
+﻿@model List<System.Dynamic.ExpandoObject>
 
 @{
     ViewData["Title"] = "Courses";
@@ -7,18 +7,75 @@
 <div class="container mt-5">
     <h2 class="text-center">Courses</h2>
 
+    <!-- Форма для фильтрации -->
+    <form method="get" asp-action="Index" class="mb-4">
+        <div class="row g-3">
+            <!-- Поле для минимального рейтинга -->
+            <div class="col-md-2">
+                <label for="minRating" class="form-label">Min Rating</label>
+                <input type="number" step="0.1" min="0" max="5" class="form-control" id="minRating" name="minRating" placeholder="0-5">
+            </div>
+
+            <!-- Поле для названия курса -->
+            <div class="col-md-4">
+                <label for="courseTitle" class="form-label">Title</label>
+                <input type="text" class="form-control" id="courseTitle" name="title" placeholder="Course title">
+            </div>
+
+            <!-- Селектор для типа курса -->
+            <div class="col-md-2">
+                <label for="courseType" class="form-label">Type</label>
+                <select class="form-select" id="courseType" name="type">
+                    <option value="">All</option>
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                    <option value="by subscription">By Subscription</option>
+                </select>
+            </div>
+
+            <!-- Селектор для категорий -->
+            <div class="col-md-2">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">All</option>
+                    @if (ViewBag.Categories != null)
+                    {
+                        foreach (var category in ViewBag.Categories as List<Category>)
+                        {
+                            <option value="@category.Name">@category.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <!-- Поле для максимальной цены -->
+            <div class="col-md-2">
+                <label for="maxPrice" class="form-label">Max Price</label>
+                <input type="number" step="0.01" min="0" class="form-control" id="maxPrice" name="maxPrice" placeholder="Max price">
+            </div>
+        </div>
+
+        <!-- Кнопка для отправки формы -->
+        <div class="row mt-3">
+            <div class="col-md-12 text-end">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+
     <div class="row">
         @if (Model != null && Model.Count > 0)
         {
-            foreach (var course in Model)
+            foreach (var item in Model)
             {
+                dynamic course = item; // Explicitly treat as dynamic
                 <div class="col-md-4 mb-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-body">
-                            <h5 class="card-title">@course.Title</h5>
-                            <h6 class="card-subtitle mb-2 text-muted">Category: @course.Category</h6>
-                            <p class="card-text">Rating: @course.Rating</p>
-                            <a href="@Url.Action("Details", "Course", new { id = course.CourseId })" class="btn btn-primary">View Details</a>
+                            <h5 class="card-title">@course.title</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">Category: @course.category</h6>
+                            <p class="card-text">Rating: @course.rating</p>
+                            <a href="@Url.Action("Course", new { id = course.courseId })" class="btn btn-primary">View Details</a>
                         </div>
                     </div>
                 </div>

@@ -3,19 +3,22 @@ using DirectDbWebApp.Services;
 using System.Data;
 using System.Text.Json;
 using Npgsql;
+using DirectDbWebApp.Domain;
 
 namespace DirectDbWebApp.Controllers {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api")]
     public class UserApiController : ControllerBase {
         private readonly DataService _dataService;
+        private readonly string _connectionString;
 
-        public UserApiController(DataService dataService) {
+        public UserApiController(DataService dataService, IConfiguration Config) {
             _dataService = dataService;
+            this._connectionString = Config.GetValue<string>("ConnectionString") ?? "";
         }
 
         // GET: api/User
-        [HttpGet]
+        [HttpGet("users")]
         public async Task<IActionResult> GetUsers() {
             var query = "SELECT user_id, username, email, first_name, last_name, bio, role, profile_picture, date_registered FROM DbUser";
 
@@ -43,16 +46,20 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        // GET: api/User/{id}
-        [HttpGet("{id}")]
+        // GET: api/user/{id}
+        [HttpGet("user/{id}")]
         public async Task<IActionResult> GetUserById(int id) {
             var query = $"SELECT user_id, username, email, first_name, last_name, bio, role, profile_picture, date_registered FROM DbUser WHERE user_id = {id}";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                var cmd = new NpgsqlCommand(query, conn);
+                var reader = await cmd.ExecuteReaderAsync();
 
                 if (await reader.ReadAsync()) {
-                    var user = new {
+                    var user = new DbUser {
                         UserId = reader.GetInt32(0),
                         Username = reader.GetString(1),
                         Email = reader.GetString(2),
@@ -74,7 +81,7 @@ namespace DirectDbWebApp.Controllers {
         }
 
         // POST: api/User
-        [HttpPost]
+        [HttpPost("user")]
         public async Task<IActionResult> CreateUser([FromBody] JsonElement body) {
             if (!body.TryGetProperty("username", out JsonElement usernameElement) || !body.TryGetProperty("email", out JsonElement emailElement) || !body.TryGetProperty("password_hash", out JsonElement passwordHashElement)) {
                 return BadRequest(new { Message = "Invalid input. 'username', 'email', and 'password_hash' are required." });
@@ -109,8 +116,8 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        // DELETE: api/User/{id}
-        [HttpDelete("{id}")]
+        // DELETE: api/user/{id}
+        [HttpDelete("user/{id}")]
         public async Task<IActionResult> DeleteUser(int id) {
             var query = $"DELETE FROM DbUser WHERE user_id = {id}";
 

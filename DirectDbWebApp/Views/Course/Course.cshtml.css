@@ -1,0 +1,43 @@
+﻿/* Align the navigation title */
+.nav-title {
+    padding: 10px 15px; /* Adjust padding to align nicely */
+    text-align: left; /* Ensure text is left-aligned */
+    font-weight: bold; /* Optional: Make it bold for emphasis */
+}
+
+/* Standardize padding for all nav items */
+.nav-item {
+    padding: 5px 10px; /* Ensure uniform spacing for items */
+}
+
+/* Adjust the button styles */
+.btn-toggle {
+    width: 100%; /* Make buttons stretch across the container */
+    text-align: left; /* Align text to the left inside buttons */
+    padding: 5px 15px; /* Add some padding for better spacing */
+    font-size: 1rem;
+}
+
+/* Styling for nested list items */
+.btn-toggle-nav li {
+    margin-left: 20px; /* Indent nested items for tree view */
+    padding: 5px 0; /* Add vertical spacing between items */
+}
+
+    /* Optional: Hover effect for better UX */
+    .btn-toggle-nav li a:hover {
+        text-decoration: underline; /* Highlight links on hover */
+        color: #0056b3; /* Optional: Change link color on hover */
+    }
+
+/* Optional: Collapse icon indicator for buttons */
+.btn-toggle::after {
+    content: "\25BC"; /* Down arrow */
+    float: right; /* Align arrow to the right */
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-toggle[aria-expanded="true"]::after {
+    transform: rotate(180deg); /* Rotate arrow when expanded */
+}

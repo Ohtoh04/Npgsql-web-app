@@ -1,5 +1,4 @@
-﻿@using System.Dynamic
-@model dynamic
+﻿@model DirectDbWebApp.Domain.DbUser
 
 <div class="container mt-5">
     <div class="card mx-auto" style="max-width: 600px;">
@@ -15,7 +14,7 @@
                 else
                 {
                     <div class="rounded-circle bg-secondary mb-3" style="width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;">
-                        <span class="text-white fs-1">@Model.Username[0]</span>
+                        <span class="text-white fs-1">@Model.Username</span>
                     </div>
                 }
                 <h4>@Model.FirstName @Model.LastName</h4>

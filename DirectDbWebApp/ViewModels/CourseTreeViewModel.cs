@@ -1,4 +1,7 @@
-﻿namespace DirectDbWebApp.ViewModels {
+﻿using System.Dynamic;
+
+
+namespace DirectDbWebApp.ViewModels {
     public class CourseTreeViewModel {
         public CourseTreeViewModel(dynamic Course, List<dynamic> Modules, List<List<dynamic>> Units) { 
             this.Course = Course;

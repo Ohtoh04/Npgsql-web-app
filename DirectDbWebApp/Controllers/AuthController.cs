@@ -12,14 +12,18 @@ using DirectDbWebApp.Services;
 [Route("auth")]
 public class AuthController : Controller {
     private readonly DataService _dataService;
-    public AuthController(DataService DataService) { 
+    private readonly string _connectionString;
+    public AuthController(DataService DataService, IConfiguration Config) { 
         this._dataService = DataService;
+        this._connectionString = Config.GetValue<string>("ConnectionString") ?? "";
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginUser(string username, string password, string role) {
+    public async Task<IActionResult> LoginUser([FromForm] string username, [FromForm] string password) {
+        string role = "Student";
         // Validate the user's credentials using your database
-        if (!(await AuthenticateUser(username, password))) {
+        var UserId = await AuthenticateUser(username, password);
+        if (UserId==-1) {
             return Unauthorized("Invalid username or password");
         }
 
@@ -28,6 +32,7 @@ public class AuthController : Controller {
         {
             new Claim(ClaimTypes.Name, username),
             new Claim(ClaimTypes.Role, role),
+            new Claim(ClaimTypes.NameIdentifier, UserId.ToString()),
         };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -53,19 +58,33 @@ public class AuthController : Controller {
 
     [HttpGet("register")]
     public IActionResult Register() {
+        Console.WriteLine("register view function");
+
         return View();
     }
 
 
-
-    public async Task<IActionResult> RegisterUser(string username, string password) {
+    [HttpPost("registeruser")]
+    public async Task<IActionResult> RegisterUser([FromForm] string username, [FromForm] string email, [FromForm] string password) {
         string hashedPassword = PasswordHasher.HashPassword(password);
-        string query = $"INSERT INTO users (username, password_hash) VALUES ({username}, {hashedPassword})";
+        string query = $"INSERT INTO dbuser (username, email, password_hash) " +
+                       $"VALUES (@username, @email, @password) RETURNING user_id;";
 
         try {
-            await using var reader = await _dataService.ExecuteQuery(query);
-            if (!(await reader.ReadAsync())) {
-                return Created($"/api/users/{reader["user_id"]}", new { UserId = reader["user_id"] });
+            await using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            // Set up the command with parameters to prevent SQL Injection
+            await using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("username", username);
+            cmd.Parameters.AddWithValue("email", email);
+            cmd.Parameters.AddWithValue("password", hashedPassword);
+
+            // Execute the query and get the result (RETURNING user_id)
+            var userId = await cmd.ExecuteScalarAsync();
+
+            if (userId != null) {
+                return Redirect("/auth/login");
             }
 
             return BadRequest(new { message = "Failed to create user" });
@@ -75,29 +94,37 @@ public class AuthController : Controller {
     }
 
 
-
     [HttpPost("logout")]
     public async Task<IActionResult> Logout() {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Ok("Logged out successfully");
     }
 
-    private async Task<bool> AuthenticateUser(string username, string password) {
-        var query = $"SELECT password_hash FROM users WHERE username = {username}";
+
+    // auxilliary function that returns -1 if user doesnt exist or credentials dont match and UserId if authentication is successful
+    private async Task<int> AuthenticateUser(string username, string password) {
+        var query = "SELECT user_id,password_hash FROM dbuser WHERE username = @username";
 
         try {
-            await using var reader = await _dataService.ExecuteQuery(query);
+            await using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            await using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@username", username);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
             if (await reader.ReadAsync()) {
-                var storedHash = reader["password_hash"];
+                var storedHash = reader["password_hash"].ToString();
+                var UserId = (int)reader["user_id"];
                 string enteredHash = PasswordHasher.HashPassword(password);
-                return (string)storedHash == enteredHash; // Match password
+                return storedHash == enteredHash ? UserId : -1;
             }
-            return false;
+
+            return -1;
         } catch (Exception ex) {
             Console.WriteLine(ex);
+            return -1;
         }
-
-        return false; // User not found
     }
 
 }

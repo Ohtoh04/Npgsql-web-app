@@ -1,29 +1,28 @@
-﻿@model DirectDbWebApp.ViewModels.CourseTreeViewModel
+﻿@model DirectDbWebApp.Domain.Course
 
 @{
     ViewData["Title"] = "Course";
 }
 
-<div class="container-fluid">
-    <div class="row">
+<div class="container-fluid p-0">
+    <div class="row flex-nowrap" style="min-height: 100vh;">
         <!-- Sidebar -->
-        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+        <nav class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-light" style="height: 100vh;">
             <div class="position-sticky">
-                <h4 class="text-center mt-3">@Model.Course?.name</h4>
+                <h4 class="nav-title">@Model.Title</h4>
                 <ul class="nav flex-column">
                     @for (int i = 0; i < Model.Modules.Count; i++)
                     {
-                        var module = Model.Modules[i];
-                        var units = Model.Units[i];
+                        var module = Model.Modules.ElementAt(i); // Use ElementAt for indexed access
                         <li class="nav-item">
                             <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#module-@i" aria-expanded="false">
-                                @module.name
+                                @module.Title
                             </button>
                             <div class="collapse" id="module-@i">
                                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                                    @foreach (var unit in units)
+                                    @foreach (var unit in module.Units.OrderBy(u => u.Sequence))
                                     {
-                                        <li><a href="#" class="link-dark rounded">@unit.name</a></li>
+                                        <li><a href="#" class="link-dark rounded">@unit.Title</a></li>
                                     }
                                 </ul>
                             </div>
@@ -33,12 +32,13 @@
             </div>
         </nav>
 
-        <!-- Main Content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Course Details</h1>
-            </div>
-            <p>Welcome to the course "@Model.Course?.name". Explore the modules and units using the sidebar.</p>
-        </main>
+
+        @* <!-- Main Content --> *@
+        @* <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4"> *@
+        @*     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"> *@
+        @*         <h1 class="h2">Course Details</h1> *@
+        @*     </div> *@
+        @*     <p>Welcome to the course "@Model.Title". Explore the modules and units using the sidebar.</p> *@
+        @* </main> *@
     </div>
 </div>

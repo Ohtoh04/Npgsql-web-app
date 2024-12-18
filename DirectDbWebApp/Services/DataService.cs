@@ -10,10 +10,10 @@ namespace DirectDbWebApp.Services {
         }
 
         public async Task<NpgsqlDataReader> ExecuteQuery(string Query) {
-            await using var conn = new NpgsqlConnection(_connectionString);
+            var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
 
-            using var cmd = new NpgsqlCommand(Query, conn);
+            var cmd = new NpgsqlCommand(Query, conn);
             var reader = await cmd.ExecuteReaderAsync();
 
             return reader;

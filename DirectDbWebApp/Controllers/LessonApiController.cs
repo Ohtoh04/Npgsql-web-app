@@ -3,15 +3,16 @@ using DirectDbWebApp.Services;
 using System.Data;
 using System.Text.Json;
 using Npgsql;
+using DirectDbWebApp.Domain;
 
 namespace DirectDbWebApp.Controllers {
     [ApiController]
     [Route("api/[controller]")]
     public class LessonApiController : ControllerBase {
-        private readonly DataService _dataService;
+        private readonly string _connectionString;
 
-        public LessonApiController(DataService dataService) {
-            _dataService = dataService;
+        public LessonApiController(IConfiguration config) {
+            _connectionString = config.GetValue<string>("ConnectionString") ?? throw new ArgumentNullException("ConnectionString is not configured.");
         }
 
         // GET: api/Lesson
@@ -20,17 +21,22 @@ namespace DirectDbWebApp.Controllers {
             var query = "SELECT lesson_id, unit_id, title, content, correct_solution, sequence FROM Lesson";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
-                var lessons = new List<object>();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var lessons = new List<Lesson>();
 
                 while (await reader.ReadAsync()) {
-                    lessons.Add(new {
+                    lessons.Add(new Lesson {
                         LessonId = reader.GetInt32(0),
                         UnitId = reader.GetInt32(1),
                         Title = reader.GetString(2),
                         Content = reader.IsDBNull(3) ? null : reader.GetString(3),
-                        CorrectSolution = reader.IsDBNull(4) ? new JsonElement() : JsonDocument.Parse(reader.GetString(4)).RootElement,
-                        Sequence = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5)
+                        CorrectSolution = reader.IsDBNull(4) ? default : JsonDocument.Parse(reader.GetString(4)).RootElement,
+                        Sequence = reader.IsDBNull(5) ? default : reader.GetInt32(5)
                     });
                 }
 
@@ -40,16 +46,24 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetLessonsForUnit(int unitId = 1) {
-            var query = "SELECT lesson_id, title, content FROM Lesson WHERE unit_id = 1 ORDER BY sequence;";
-
+        // GET: api/Lesson/unit/{unitId}
+        [HttpGet("unit/{unitId}")]
+        public async Task<IActionResult> GetLessonsForUnit(int unitId) {
+            var query = "SELECT lesson_id, title, content FROM Lesson WHERE unit_id = @unitId ORDER BY sequence";
+            
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
-                var lessons = new List<object>();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("unitId", unitId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var lessons = new List<Lesson>();
 
                 while (await reader.ReadAsync()) {
-                    lessons.Add(new {
+                    lessons.Add(new Lesson {
                         LessonId = reader.GetInt32(0),
                         Title = reader.GetString(1),
                         Content = reader.IsDBNull(2) ? null : reader.GetString(2)
@@ -58,35 +72,38 @@ namespace DirectDbWebApp.Controllers {
 
                 return Ok(lessons);
             } catch (Exception ex) {
-                return StatusCode(500, new {
-                    Message = "An error occurred while fetching lessons.",
-                    Details = ex.Message
-                });
+                return StatusCode(500, new { Message = "An error occurred while fetching lessons.", Details = ex.Message });
             }
         }
 
         // GET: api/Lesson/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLessonById(int id) {
-            var query = $"SELECT lesson_id, unit_id, title, content, correct_solution, sequence FROM Lesson WHERE lesson_id = {id}";
+            var query = "SELECT lesson_id, unit_id, title, content, correct_solution, sequence FROM Lesson WHERE lesson_id = @id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("id", id);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
 
                 if (await reader.ReadAsync()) {
-                    var lesson = new {
+                    var lesson = new Lesson {
                         LessonId = reader.GetInt32(0),
                         UnitId = reader.GetInt32(1),
                         Title = reader.GetString(2),
                         Content = reader.IsDBNull(3) ? null : reader.GetString(3),
-                        CorrectSolution = reader.IsDBNull(4) ? new JsonElement() : JsonDocument.Parse(reader.GetString(4)).RootElement,
-                        Sequence = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5)
+                        CorrectSolution = reader.IsDBNull(4) ? default : JsonDocument.Parse(reader.GetString(4)).RootElement,
+                        Sequence = reader.IsDBNull(5) ? default : reader.GetInt32(5)
                     };
 
                     return Ok(lesson);
-                } else {
-                    return NotFound(new { Message = "Lesson not found." });
                 }
+
+                return NotFound(new { Message = "Lesson not found." });
             } catch (Exception ex) {
                 return StatusCode(500, new { Message = "An error occurred while fetching the lesson.", Details = ex.Message });
             }
@@ -94,32 +111,35 @@ namespace DirectDbWebApp.Controllers {
 
         // POST: api/Lesson
         [HttpPost]
-        public async Task<IActionResult> CreateLesson([FromBody] JsonElement body) {
-            if (!body.TryGetProperty("unit_id", out JsonElement unitIdElement) || !body.TryGetProperty("title", out JsonElement titleElement)) {
-                return BadRequest(new { Message = "Invalid input. 'unit_id' and 'title' are required." });
+        public async Task<IActionResult> CreateLesson([FromBody] Lesson lesson) {
+            if (lesson == null || lesson.UnitId == 0 || string.IsNullOrWhiteSpace(lesson.Title)) {
+                return BadRequest(new { Message = "Invalid input. 'UnitId' and 'Title' are required." });
             }
 
-            var unitId = unitIdElement.GetInt32();
-            var title = titleElement.GetString();
-            var content = body.TryGetProperty("content", out JsonElement contentElement) ? contentElement.GetString() : null;
-            var correctSolution = body.TryGetProperty("correct_solution", out JsonElement correctSolutionElement) ? correctSolutionElement.ToString() : null;
-            var sequence = body.TryGetProperty("sequence", out JsonElement sequenceElement) ? sequenceElement.GetInt32() : (int?)null;
-
             var query = "INSERT INTO Lesson (unit_id, title, content, correct_solution, sequence) " +
-                        $"VALUES ({unitId}, '{title}', '{content}', '{correctSolution}', {sequence}) RETURNING lesson_id";
+                        "VALUES (@unitId, @title, @content, @correctSolution, @sequence) RETURNING lesson_id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                if (await reader.ReadAsync()) {
-                    var lessonId = reader.GetInt32(0);
-                    return CreatedAtAction(nameof(GetLessonById), new { id = lessonId }, new { LessonId = lessonId, UnitId = unitId, Title = title, Content = content, CorrectSolution = correctSolution, Sequence = sequence });
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("unitId", lesson.UnitId);
+                cmd.Parameters.AddWithValue("title", lesson.Title);
+                cmd.Parameters.AddWithValue("content", (object?)lesson.Content ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("correctSolution", lesson.CorrectSolution.ToString() ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("sequence", lesson.Sequence);
+
+                var lessonId = await cmd.ExecuteScalarAsync();
+
+                if (lessonId != null) {
+                    return CreatedAtAction(nameof(GetLessonById), new { id = (int)lessonId }, lesson);
                 }
 
                 return StatusCode(500, new { Message = "An error occurred while creating the lesson." });
             } catch (PostgresException ex) when (ex.SqlState == "23503") // Foreign key violation
               {
-                return BadRequest(new { Message = "The specified unit_id does not exist." });
+                return BadRequest(new { Message = "The specified UnitId does not exist." });
             } catch (Exception ex) {
                 return StatusCode(500, new { Message = "An error occurred while creating the lesson.", Details = ex.Message });
             }
@@ -128,16 +148,26 @@ namespace DirectDbWebApp.Controllers {
         // DELETE: api/Lesson/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLesson(int id) {
-            var query = $"DELETE FROM Lesson WHERE lesson_id = {id}";
+            var query = "DELETE FROM Lesson WHERE lesson_id = @id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                // No rows affected check can be implemented here.
-                return NoContent();
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("id", id);
+
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                if (rowsAffected > 0) {
+                    return NoContent();
+                }
+
+                return NotFound(new { Message = "Lesson not found." });
             } catch (Exception ex) {
                 return StatusCode(500, new { Message = "An error occurred while deleting the lesson.", Details = ex.Message });
             }
         }
     }
+
 }

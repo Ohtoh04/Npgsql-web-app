@@ -1,9 +1,13 @@
 ﻿<div class="container mt-5">
-    <h2 class="text-center " id="register-header">Register</h2>
-    <form method="post" asp-controller="Auth" asp-action="RegisterUser" class="mt-4 " id="register-form">
+    <h2 class="text-center" id="register-header">Register</h2>
+    <form method="post" asp-controller="auth" asp-action="registeruser" class="mt-4" id="register-form">
         <div class="mb-3">
             <label for="reg-username" class="form-label">Username</label>
             <input type="text" class="form-control" id="reg-username" name="username" placeholder="Enter a username" required>
+        </div>
+        <div class="mb-3">
+            <label for="reg-email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="reg-email" name="email" placeholder="Enter your email" required>
         </div>
         <div class="mb-3">
             <label for="reg-password" class="form-label">Password</label>
@@ -12,7 +16,7 @@
         <button type="submit" class="btn btn-success w-100">Register</button>
     </form>
 
-    <div class="text-center mt-4 " id="login-link">
+    <div class="text-center mt-4" id="login-link">
         <p>Already have an account? <a href="#" onclick="toggleForms()">Login here</a></p>
     </div>
 </div>
