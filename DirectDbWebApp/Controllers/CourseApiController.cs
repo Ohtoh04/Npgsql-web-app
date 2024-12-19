@@ -47,6 +47,44 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
+        [HttpGet("my-courses/{userId}")]
+        public async Task<IActionResult> GetMyCourses(string userId) {
+            var query = @"SELECT c.course_id, c.title, c.rating, c.coursetype, c.price, c.duration, c.date_created, cu.relation_type
+              	        FROM Course c
+              	        JOIN CourseUser cu ON c.course_id = cu.course_id
+              	        WHERE cu.user_id = @UserId";
+
+            var courses = new List<object>();
+
+            try {
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                if(Int32.TryParse(userId, out int UserId)) 
+                 cmd.Parameters.AddWithValue("@UserId", UserId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync()) {
+                    courses.Add(new {
+                        CourseId = reader["course_id"],
+                        Title = reader["title"],
+                        Rating = reader["rating"],
+                        CourseType = reader["coursetype"],
+                        Price = reader["price"],
+                        Duration = reader["duration"],
+                        DateCreated = reader["date_created"],
+                        RelationType = reader["relation_type"]
+                    });
+                }
+
+                return Ok(courses);
+            } catch (Exception ex) {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
         // Get course by ID
         [HttpGet("courses/{id}")]
         public async Task<IActionResult> GetCourseById(int id) {
@@ -83,12 +121,36 @@ namespace DirectDbWebApp.Controllers {
 
         // Get courses with filter
         [HttpGet("courses/filtered")]
-        public async Task<IActionResult> GetCoursesWithFilter([FromForm] string Title = "", [FromForm] double MaxPrice = 100000, [FromForm] double MinRating = 0,
-                                                              [FromForm] string courseType = "", [FromForm] string category = "") {
-            var query = @"SELECT * FROM Course c
-                          LEFT JOIN CourseCategory cc ON c.course_id = cc.course_id
-                          JOIN Category cat ON cc.category_id = cat.category_id
-                          WHERE price < @MaxPrice AND rating > @MinRating AND title ILIKE @Title AND coursetype = @courseType AND cat.name = @category";
+        public async Task<IActionResult> GetCoursesWithFilter([FromQuery] string Title = "", [FromQuery] double MaxPrice = 100000,
+                                         [FromQuery] double MinRating = 0, [FromQuery] string courseType = "", [FromQuery] string category = "") {
+            // Start with the base query
+            var query = @"SELECT *,cat.name AS category
+                          FROM Course c
+              	          LEFT JOIN CourseCategory cc ON c.course_id = cc.course_id
+              	          JOIN Category cat ON cc.category_id = cat.category_id
+              	          WHERE price < @MaxPrice AND rating > @MinRating";
+
+            // Create a dictionary to hold parameters
+            var parameters = new Dictionary<string, object> {
+                { "@MaxPrice", MaxPrice },
+                { "@MinRating", MinRating/10.0 }
+            };
+
+            // Append filters dynamically
+            if (!string.IsNullOrWhiteSpace(Title)) {
+                query += " AND title ILIKE @Title";
+                parameters.Add("@Title", $"%{Title}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(courseType)) {
+                query += " AND coursetype = @courseType";
+                parameters.Add("@courseType", courseType);
+            }
+
+            if (!string.IsNullOrWhiteSpace(category)) {
+                query += " AND cat.name = @category";
+                parameters.Add("@category", category);
+            }
 
             var courses = new List<object>();
 
@@ -97,11 +159,11 @@ namespace DirectDbWebApp.Controllers {
                 await conn.OpenAsync();
 
                 await using var cmd = new NpgsqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@MaxPrice", MaxPrice);
-                cmd.Parameters.AddWithValue("@MinRating", MinRating);
-                cmd.Parameters.AddWithValue("@Title", $"%{Title}%");
-                cmd.Parameters.AddWithValue("@courseType", courseType);
-                cmd.Parameters.AddWithValue("@category", category);
+
+                // Add parameters dynamically
+                foreach (var param in parameters) {
+                    cmd.Parameters.AddWithValue(param.Key, param.Value);
+                }
 
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -114,7 +176,8 @@ namespace DirectDbWebApp.Controllers {
                         Price = reader["price"],
                         Duration = reader["duration"],
                         DateCreated = reader["date_created"],
-                        Rating = reader["rating"]
+                        Rating = reader["rating"],
+                        Category = reader["category"]
                     });
                 }
 

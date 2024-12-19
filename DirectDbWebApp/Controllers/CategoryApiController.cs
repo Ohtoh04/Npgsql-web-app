@@ -3,15 +3,16 @@ using DirectDbWebApp.Services;
 using System.Data;
 using System.Text.Json;
 using Npgsql;
+using DirectDbWebApp.Domain;
 
 namespace DirectDbWebApp.Controllers {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/category")]
     public class CategoryApiController : ControllerBase {
-        private readonly DataService _dataService;
+        private readonly string _connectionString;
 
-        public CategoryApiController(DataService dataService) {
-            _dataService = dataService;
+        public CategoryApiController(string connectionString) {
+            _connectionString = connectionString;
         }
 
         // GET: api/Category
@@ -20,11 +21,16 @@ namespace DirectDbWebApp.Controllers {
             var query = "SELECT category_id, name FROM Category";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
-                var categories = new List<object>();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var categories = new List<Category>();
 
                 while (await reader.ReadAsync()) {
-                    categories.Add(new {
+                    categories.Add(new Category {
                         CategoryId = reader.GetInt32(0),
                         Name = reader.GetString(1)
                     });
@@ -39,13 +45,19 @@ namespace DirectDbWebApp.Controllers {
         // GET: api/Category/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCategoryById(int id) {
-            var query = $"SELECT category_id, name FROM Category WHERE category_id = {id}";
+            var query = "SELECT category_id, name FROM Category WHERE category_id = @id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
 
                 if (await reader.ReadAsync()) {
-                    var category = new {
+                    var category = new Category {
                         CategoryId = reader.GetInt32(0),
                         Name = reader.GetString(1)
                     };
@@ -61,25 +73,24 @@ namespace DirectDbWebApp.Controllers {
 
         // POST: api/Category
         [HttpPost]
-        public async Task<IActionResult> CreateCategory([FromBody] JsonElement body) {
-            if (!body.TryGetProperty("name", out JsonElement nameElement) || string.IsNullOrWhiteSpace(nameElement.GetString())) {
+        public async Task<IActionResult> CreateCategory([FromBody] Category category) {
+            if (string.IsNullOrWhiteSpace(category.Name)) {
                 return BadRequest(new { Message = "Invalid input. 'name' is required." });
             }
 
-            var name = nameElement.GetString();
-            var query = $"INSERT INTO Category (name) VALUES ('{name}') RETURNING category_id";
+            var query = "INSERT INTO Category (name) VALUES (@name) RETURNING category_id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                if (await reader.ReadAsync()) {
-                    var categoryId = reader.GetInt32(0);
-                    return CreatedAtAction(nameof(GetCategoryById), new { id = categoryId }, new { CategoryId = categoryId, Name = name });
-                }
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@name", category.Name);
 
-                return StatusCode(500, new { Message = "An error occurred while creating the category." });
-            } catch (PostgresException ex) when (ex.SqlState == "23505") // Unique violation
-              {
+                var categoryId = (int)await cmd.ExecuteScalarAsync();
+
+                return CreatedAtAction(nameof(GetCategoryById), new { id = categoryId }, new { CategoryId = categoryId, Name = category.Name });
+            } catch (PostgresException ex) when (ex.SqlState == "23505") { // Unique violation
                 return Conflict(new { Message = "A category with this name already exists." });
             } catch (Exception ex) {
                 return StatusCode(500, new { Message = "An error occurred while creating the category.", Details = ex.Message });
@@ -89,15 +100,26 @@ namespace DirectDbWebApp.Controllers {
         // DELETE: api/Category/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id) {
-            var query = $"DELETE FROM Category WHERE category_id = {id}";
+            var query = "DELETE FROM Category WHERE category_id = @id";
 
             try {
-                await using var reader = await _dataService.ExecuteQuery(query);
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                return NoContent();
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                if (rowsAffected > 0) {
+                    return NoContent();
+                } else {
+                    return NotFound(new { Message = "Category not found." });
+                }
             } catch (Exception ex) {
                 return StatusCode(500, new { Message = "An error occurred while deleting the category.", Details = ex.Message });
             }
         }
     }
+
 }

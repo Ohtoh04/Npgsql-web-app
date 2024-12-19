@@ -8,7 +8,7 @@
     <h2 class="text-center">Courses</h2>
 
     <!-- Форма для фильтрации -->
-    <form method="get" asp-action="Index" class="mb-4">
+    <form method="post" asp-controller="Course" asp-action="CoursesFiltered" class="mb-4">
         <div class="row g-3">
             <!-- Поле для минимального рейтинга -->
             <div class="col-md-2">
