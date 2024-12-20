@@ -166,6 +166,27 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
+
+        [HttpPost]
+        public async Task<IActionResult> CreateLesson(Lesson lesson) {
+            if (!ModelState.IsValid) {
+                return View(lesson);
+            }
+
+
+            var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + "api/Lesson", lesson);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Index", "Lesson"); // Redirect to a list of lessons or another appropriate page
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View(lesson);
+        }
+
+
         //public async Task<IActionResult> Module() {
         //    var moduleResponse = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{id}");
 
@@ -218,7 +239,7 @@ namespace DirectDbWebApp.Controllers {
 
         //        units.Add(moduleUnits);
         //    }
-            
+
 
         //    // Return the ViewModel
         //    return new CourseTreeViewModel(course, modules, units);

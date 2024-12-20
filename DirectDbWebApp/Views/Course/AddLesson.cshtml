@@ -1,5 +1,76 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model Lesson
+
 @{
+    ViewData["Title"] = "Create Lesson";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="text-center mb-4">Create Lesson</h1>
+
+            <form asp-action="CreateLesson" method="post" class="needs-validation" novalidate>
+                <div class="mb-3">
+                    <label asp-for="UnitId" class="form-label">Unit ID</label>
+                    <input asp-for="UnitId" class="form-control" placeholder="Enter Unit ID" required />
+                    <div class="invalid-feedback">
+                        Unit ID is required.
+                    </div>
+                    <span asp-validation-for="UnitId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label">Title</label>
+                    <input asp-for="Title" class="form-control" placeholder="Enter Lesson Title" required />
+                    <div class="invalid-feedback">
+                        Title is required.
+                    </div>
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label">Content</label>
+                    <textarea asp-for="Content" class="form-control" placeholder="Enter Lesson Content"></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Sequence" class="form-label">Sequence</label>
+                    <input asp-for="Sequence" class="form-control" type="number" placeholder="Enter Lesson Sequence" />
+                    <span asp-validation-for="Sequence" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CorrectSolution" class="form-label">Correct Solution</label>
+                    <textarea asp-for="CorrectSolution" class="form-control" placeholder="Enter Correct Solution as JSON"></textarea>
+                    <span asp-validation-for="CorrectSolution" class="text-danger"></span>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-block">Create Lesson</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Enable Bootstrap's client-side validation
+        (function () {
+            'use strict';
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+        })();
+    </script>
+    <partial name="_ValidationScriptsPartial" />
 }

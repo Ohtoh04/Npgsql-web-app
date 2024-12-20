@@ -1,5 +1,22 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
+﻿@{
+    ViewBag.Title = "Course Actions";
 }
+
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Course Actions</h2>
+
+    <div class="list-group">
+        <a class="list-group-item list-group-item-action" asp-action="AddLesson" asp-controller="Course">
+            Add Lesson
+        </a>
+        <a class="list-group-item list-group-item-action" asp-action="AddCourse" asp-controller="Course">
+            Add Course
+        </a>
+        <a class="list-group-item list-group-item-action" asp-action="AddModule" asp-controller="Course">
+            Add Module
+        </a>
+        <a class="list-group-item list-group-item-action" asp-action="AddUnit" asp-controller="Course">
+            Add Unit
+        </a>
+    </div>
+</div>

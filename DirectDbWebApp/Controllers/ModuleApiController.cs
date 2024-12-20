@@ -9,9 +9,11 @@ namespace DirectDbWebApp.Controllers {
     [Route("api/[controller]")]
     public class ModuleApiController : ControllerBase {
         private readonly DataService _dataService;
+        private readonly string _connectionString;
 
-        public ModuleApiController(DataService dataService) {
+        public ModuleApiController(DataService dataService, IConfiguration configuration) {
             _dataService = dataService;
+            this._connectionString = configuration.GetValue<string>("ConnectionString");
         }
 
         // GET: api/Module
