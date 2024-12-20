@@ -1,5 +1,27 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model Lesson
+
 @{
+    ViewData["Title"] = "Lesson Details";
 }
+
+<h2>Lesson Details</h2>
+
+<div>
+    <h3>@Model.Title</h3>
+    <p><strong>Content:</strong> @Model.Content</p>
+    <p><strong>Sequence:</strong> @Model.Sequence</p>
+    <p><strong>Unit:</strong> @Model.Unit?.Name</p> <!-- Assuming Unit has a Name property -->
+    <p><strong>Correct Solution:</strong> @Model.CorrectSolution.GetRawText()</p>
+</div>
+
+<hr />
+
+<h3>Submit Your Solution</h3>
+
+<form asp-controller="SolutionApi" asp-action="AddSolution" method="post">
+    <div class="form-group">
+        <label for="userSolution">Your Solution</label>
+        <textarea class="form-control" id="userSolution" name="solution" rows="3" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Solution</button>
+</form>

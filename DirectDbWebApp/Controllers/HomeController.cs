@@ -28,6 +28,10 @@ namespace DirectDbWebApp.Controllers
             return View();
         }
 
+        public IActionResult AddPayment() {
+            return View();
+        }
+
         public async Task<IActionResult> Profile() {
             try {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

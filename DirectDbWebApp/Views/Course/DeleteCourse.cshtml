@@ -1,0 +1,13 @@
+﻿@{
+    ViewData["Title"] = "Delete Course";
+}
+<div class="container mt-5">
+    <h1>Delete Course</h1>
+    <form id="deleteCourseForm" method="post" action="/api/courses">
+        <div class="form-group">
+            <label for="courseId">Course ID</label>
+            <input type="number" class="form-control" id="courseId" name="id" required placeholder="Enter Course ID" />
+        </div>
+        <button type="submit" class="btn btn-danger">Delete Course</button>
+    </form>
+</div>

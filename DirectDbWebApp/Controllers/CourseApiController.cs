@@ -187,43 +187,74 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        // Create a new course
-        [HttpPost("courses")]
-        public async Task<IActionResult> CreateCourse([FromBody] dynamic course) {
-            var query = @"INSERT INTO Course (title, description, coursetype, price, duration, rating)
-                          VALUES (@Title, @Description, @CourseType, @Price, @Duration, @Rating)
-                          RETURNING course_id;";
+        [HttpPost("courses/{userId}")]
+        public async Task<IActionResult> CreateCourse([FromBody] Course course, string userId) {
+            var insertCourseQuery = @"INSERT INTO Course (title, description, coursetype, price, duration, rating)
+                              VALUES (@Title, @Description, @CourseType, @Price, @Duration, @Rating)
+                              RETURNING course_id;";
+
+            var verificationQuery = @"SELECT 1
+                              FROM dbuser
+                              WHERE (role = 'Admin' OR role = 'Creator') AND user_id = @UserId;";
 
             try {
                 await using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                await using var cmd = new NpgsqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@Title", (string)course.title);
-                cmd.Parameters.AddWithValue("@Description", (string)course.description);
-                cmd.Parameters.AddWithValue("@CourseType", (string)course.coursetype);
-                cmd.Parameters.AddWithValue("@Price", (double)course.price);
-                cmd.Parameters.AddWithValue("@Duration", course.duration.ToString());
-                cmd.Parameters.AddWithValue("@Rating", (double)course.rating);
+                await using var transaction = await conn.BeginTransactionAsync();
 
-                var courseId = await cmd.ExecuteScalarAsync();
+                try {
+                    // Verify user role
+                    await using (var verificationCmd = new NpgsqlCommand(verificationQuery, conn, transaction)) {
+                        verificationCmd.Parameters.AddWithValue("@UserId", userId);
 
-                return Created($"/api/courses/{courseId}", new { CourseId = courseId });
+                        var verificationResult = await verificationCmd.ExecuteScalarAsync();
+                        if (verificationResult == null) {
+                            return Unauthorized(new { message = "User is not authorized to create courses." });
+                        }
+                    }
+
+                    // Insert course
+                    await using (var insertCmd = new NpgsqlCommand(insertCourseQuery, conn, transaction)) {
+                        insertCmd.Parameters.AddWithValue("@Title", course.Title);
+                        insertCmd.Parameters.AddWithValue("@Description", course.Description);
+                        insertCmd.Parameters.AddWithValue("@CourseType", course.CourseType);
+                        insertCmd.Parameters.AddWithValue("@Price", (object?)course.Price ?? DBNull.Value);
+                        insertCmd.Parameters.AddWithValue("@Duration", (object?)course.Duration ?? DBNull.Value);
+                        insertCmd.Parameters.AddWithValue("@Rating", (object?)course.Rating ?? DBNull.Value);
+
+                        var courseId = await insertCmd.ExecuteScalarAsync();
+
+                        // Commit transaction
+                        await transaction.CommitAsync();
+
+                        return Created($"/api/courses/{courseId}", new { CourseId = courseId });
+                    }
+                } catch {
+                    // Rollback transaction in case of an error
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             } catch (Exception ex) {
                 return StatusCode(500, new { message = ex.Message });
             }
         }
 
-        // Update a course
+
         [HttpPut("courses/{id}")]
-        public async Task<IActionResult> UpdateCourse(int id, [FromBody] dynamic course) {
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] Course course) {
+            // Ensure that the course ID from the route matches the course ID in the body
+            if (id != course.CourseId) {
+                return BadRequest("Course ID mismatch.");
+            }
+
             var query = @"UPDATE Course
                           SET title = @Title,
-                              description = @Description,
-                              coursetype = @CourseType,
-                              price = @Price,
-                              duration = @Duration,
-                              rating = @Rating
+                          description = @Description,
+                          coursetype = @CourseType,
+                          price = @Price,
+                          duration = @Duration,
+                          rating = @Rating
                           WHERE course_id = @Id";
 
             try {
@@ -231,12 +262,12 @@ namespace DirectDbWebApp.Controllers {
                 await conn.OpenAsync();
 
                 await using var cmd = new NpgsqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@Title", (string)course.title);
-                cmd.Parameters.AddWithValue("@Description", (string)course.description);
-                cmd.Parameters.AddWithValue("@CourseType", (string)course.coursetype);
-                cmd.Parameters.AddWithValue("@Price", (double)course.price);
-                cmd.Parameters.AddWithValue("@Duration", course.duration.ToString());
-                cmd.Parameters.AddWithValue("@Rating", (double)course.rating);
+                cmd.Parameters.AddWithValue("@Title", course.Title);
+                cmd.Parameters.AddWithValue("@Description", course.Description);
+                cmd.Parameters.AddWithValue("@CourseType", course.CourseType);
+                cmd.Parameters.AddWithValue("@Price", course.Price.HasValue ? (object)course.Price.Value : DBNull.Value);
+                cmd.Parameters.AddWithValue("@Duration", course.Duration.HasValue ? (object)course.Duration.Value : DBNull.Value);
+                cmd.Parameters.AddWithValue("@Rating", course.Rating.HasValue ? (object)course.Rating.Value : DBNull.Value);
                 cmd.Parameters.AddWithValue("@Id", id);
 
                 await cmd.ExecuteNonQueryAsync();
@@ -286,12 +317,17 @@ namespace DirectDbWebApp.Controllers {
                     u.unit_id AS UnitId,
                     u.title AS UnitTitle,
                     u.description AS UnitDescription,
-                    u.sequence AS UnitSequence
+                    u.sequence AS UnitSequence,
+                    l.lesson_id AS LessonId,
+                    l.title AS LEssonTitle,
+                    l.content AS LessonContent,
+                    l.sequence AS LessonSequence,
                 FROM Course c
                 LEFT JOIN Module m ON c.course_id = m.course_id
                 LEFT JOIN Unit u ON m.module_id = u.module_id
+                LEFT JOIN Lesson l ON u.unit_id = l.unit_id
                 WHERE c.course_id = @courseId
-                ORDER BY m.sequence, u.sequence;";
+                ORDER BY m.sequence, u.sequence, l.sequence;";
 
             var queryVerification = @"
                 SELECT *
@@ -307,6 +343,7 @@ namespace DirectDbWebApp.Controllers {
 
                 Course courseData = null;
                 var modulesDictionary = new Dictionary<int, CourseModule>();
+                var unitsDictionary = new Dictionary<int, Unit>();
 
                 await using var conn = new NpgsqlConnection(_connectionString);
                 await conn.OpenAsync();
@@ -368,13 +405,30 @@ namespace DirectDbWebApp.Controllers {
                                 // Map units
                                 var unitId = reader["UnitId"] == DBNull.Value ? null : (int?)reader["UnitId"];
                                 if (unitId.HasValue) {
-                                    module.Units.Add(new Unit {
-                                        UnitId = unitId.Value,
-                                        ModuleId = module.ModuleId,
-                                        Title = reader["UnitTitle"].ToString(),
-                                        Description = reader["UnitDescription"].ToString(),
-                                        Sequence = reader["UnitSequence"] == DBNull.Value ? (int?)null : (int)reader["UnitSequence"]
-                                    });
+                                    if (!unitsDictionary.TryGetValue(unitId.Value, out var unit)) {
+                                        unit = new Unit {
+                                            UnitId = unitId.Value,
+                                            ModuleId = module.ModuleId,
+                                            Title = reader["UnitTitle"].ToString(),
+                                            Description = reader["UnitDescription"].ToString(),
+                                            Sequence = reader["UnitSequence"] == DBNull.Value ? (int?)null : (int)reader["UnitSequence"],
+                                            Lessons = new List<Lesson>() // Initialize Lessons list
+                                        };
+                                        unitsDictionary[unitId.Value] = unit;
+                                        module.Units.Add(unit); // Add unit to its module
+                                    }
+
+                                    // Map lessons
+                                    var lessonId = reader["LessonId"] == DBNull.Value ? null : (int?)reader["LessonId"];
+                                    if (lessonId.HasValue) {
+                                        unit.Lessons.Add(new Lesson {
+                                            LessonId = lessonId.Value,
+                                            UnitId = unit.UnitId,
+                                            Title = reader["LessonTitle"].ToString(),
+                                            Content = reader["LessonContent"].ToString(),
+                                            Sequence = reader["LessonSequence"] == DBNull.Value ? (int?)null : (int)reader["LessonSequence"],
+                                        });
+                                    }
                                 }
                             }
                         }

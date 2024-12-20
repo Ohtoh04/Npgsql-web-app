@@ -22,7 +22,21 @@
                                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                                     @foreach (var unit in module.Units.OrderBy(u => u.Sequence))
                                     {
-                                        <li><a href="#" class="link-dark rounded">@unit.Title</a></li>
+                                        <li>
+                                            <a class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#unit-@unit.UnitId" aria-expanded="false">
+                                                @unit.Title
+                                            </a>
+                                            <div class="collapse" id="unit-@unit.UnitId">
+                                                <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                                                    @foreach (var lesson in unit.Lessons.OrderBy(l => l.Sequence))
+                                                    {
+                                                        <li>
+                                                            <a href="#" class="link-dark rounded">@lesson.Title</a>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        </li>
                                     }
                                 </ul>
                             </div>
@@ -31,14 +45,5 @@
                 </ul>
             </div>
         </nav>
-
-
-        @* <!-- Main Content --> *@
-        @* <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4"> *@
-        @*     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"> *@
-        @*         <h1 class="h2">Course Details</h1> *@
-        @*     </div> *@
-        @*     <p>Welcome to the course "@Model.Title". Explore the modules and units using the sidebar.</p> *@
-        @* </main> *@
     </div>
 </div>

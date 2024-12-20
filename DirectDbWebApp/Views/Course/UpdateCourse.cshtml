@@ -1,0 +1,43 @@
+﻿@model DirectDbWebApp.Domain.Course 
+@{
+    ViewData["Title"] = "Update Course";
+}
+
+<div class="container mt-5">
+    <h1>Update Course</h1>
+    <form method="post" action="/api/courses/@Model.CourseId">
+        <input type="hidden" name="_method" value="PUT" />
+        <div class="form-group">
+            <label asp-for="Title" class="control-label"></label>
+            <input asp-for="Title" class="form-control" required />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Description" class="control-label"></label>
+            <textarea asp-for="Description" class="form-control" required></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="CourseType" class="control-label"></label>
+            <input asp-for="CourseType" class="form-control" required />
+            <span asp-validation-for="CourseType" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Price" class="control-label"></label>
+            <input asp-for="Price" type="number" step="0.01" class="form-control" required />
+            <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Duration" class="control-label"></label>
+            <input asp-for="Duration" type="text" placeholder="e.g., 2 hours, 30 minutes" class="form-control" required />
+            <span asp-validation-for="Duration" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Rating" class="control-label"></label>
+            <input asp-for="Rating" type="number" step="0.1" min="0" max="5" class="form-control" />
+            <span asp-validation-for="Rating" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Course</button>
+    </form>
+</div>

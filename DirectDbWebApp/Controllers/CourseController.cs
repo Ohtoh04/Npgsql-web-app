@@ -142,17 +142,6 @@ namespace DirectDbWebApp.Controllers {
         }
 
 
-        [HttpGet("unitbar-partial/{unitId}")]
-        public async Task<IActionResult> UnitBarPartial(int unitId) {
-            try {
-                var lessonsResponse = await _httpClient.GetAsync($"{_httpClient.BaseAddress.AbsoluteUri}api/lessons/{}")
-            } catch (Exception ex) {
-
-            }
-            return PartialView("_UnitBarPartial");
-        }
-
-
         [HttpGet("mycourses")]
         public async Task<IActionResult> MyCourses() {
             try {

@@ -10,8 +10,9 @@ namespace DirectDbWebApp.Domain {
         public int LessonId { get; set; }
         public string? Title { get; set; }
         public string? Content { get; set; }
-        public int Sequence { get; set; }
+        public int? Sequence { get; set; }
         public int UnitId { get; set; }
         public JsonElement CorrectSolution { get; set; }
+
     }
 }
