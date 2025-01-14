@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DirectDbWebApp", "DirectDbW
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DirectDbWebApp.Domain", "DirectDbWebApp.Domain\DirectDbWebApp.Domain.csproj", "{BD8224EE-9FBF-4BC2-BD75-5A37AEB529A7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Courses.Api", "WebApplication1\Courses.Api.csproj", "{047527B3-0160-46F1-9851-967E59BF4316}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{BD8224EE-9FBF-4BC2-BD75-5A37AEB529A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD8224EE-9FBF-4BC2-BD75-5A37AEB529A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD8224EE-9FBF-4BC2-BD75-5A37AEB529A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{047527B3-0160-46F1-9851-967E59BF4316}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{047527B3-0160-46F1-9851-967E59BF4316}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{047527B3-0160-46F1-9851-967E59BF4316}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{047527B3-0160-46F1-9851-967E59BF4316}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
