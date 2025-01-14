@@ -106,10 +106,10 @@ namespace DirectDbWebApp.Controllers {
         }
 
 
-        [HttpGet("course/{id}")]
-        public async Task<IActionResult> Course(int id) {
+        [HttpGet("course/{id}/{userId}")]
+        public async Task<IActionResult> Course(int id, string userId) {
             try {
-                var response = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/coursedata/{id}");
+                var response = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/coursedata/{id}/{userId}");
 
                 if (response.IsSuccessStatusCode) {
                     var jsonString = await response.Content.ReadAsStringAsync();
@@ -147,8 +147,13 @@ namespace DirectDbWebApp.Controllers {
             try {
                 var response = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/my-courses/{User.FindFirstValue(ClaimTypes.NameIdentifier)}");
                 if (response.IsSuccessStatusCode) {
-                    var coursesData = await response.Content.ReadFromJsonAsync<List<dynamic>>();
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions {
+                        PropertyNameCaseInsensitive = true
+                    };
 
+                    // Deserialize into List<ExpandoObject>
+                    var coursesData = JsonSerializer.Deserialize<List<ExpandoObject>>(jsonString, options);
                     return View(coursesData);
                 } else {
                     var errorModel = new ErrorViewModel {
@@ -177,13 +182,201 @@ namespace DirectDbWebApp.Controllers {
             var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + "api/Lesson", lesson);
 
             if (response.IsSuccessStatusCode) {
-                return RedirectToAction("Index", "Lesson"); // Redirect to a list of lessons or another appropriate page
+                return RedirectToAction("Index", "Lesson"); 
             }
 
             var errorMessage = await response.Content.ReadAsStringAsync();
             ModelState.AddModelError(string.Empty, errorMessage);
 
             return View(lesson);
+        }
+
+        [HttpGet("Enroll/{id}")]
+        public async Task<IActionResult> Enroll(int id) {
+            try {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                var enrollmentData = new {
+                    CourseId = id,
+                    UserId = userId
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courseuser/", enrollmentData);//courseId, userId
+                if (response.IsSuccessStatusCode) {
+                    return RedirectToAction("Course", "MyCourses");
+                }
+                return View("Courses");
+            } catch (Exception ex) {
+                var errorModel = new ErrorViewModel {
+                    RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                };
+                ModelState.AddModelError(string.Empty, $"An unexpected error occurred: {ex.Message}");
+                return View("Error", errorModel);
+            }
+        }
+
+
+        [HttpGet("Lesson/{id}")]
+        public async Task<IActionResult> Lesson(int id) {
+            try {
+                var response = await _httpClient.GetAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/Lesson/{id}");
+                if (response.IsSuccessStatusCode) {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+
+                    var options = new JsonSerializerOptions {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var lessonData = JsonSerializer.Deserialize<Lesson>(jsonString, options);
+
+                    //if (responseCategories.IsSuccessStatusCode) {
+                    //    ViewBag.Categories = JsonSerializer.Deserialize<List<Category>>(await responseCategories.Content.ReadAsStringAsync());
+                    //}
+                    //var courseTreeViewModel = MapToCourseTreeViewModel(courseData);
+                    return View(lessonData);
+                } else {
+                    var errorModel = new ErrorViewModel {
+                        RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                    };
+                    ModelState.AddModelError(string.Empty, "Unable to fetch course data. Please try again later.");
+                    return View("Error", errorModel);
+                }
+            } catch (Exception ex) {
+                var errorModel = new ErrorViewModel {
+                    RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                };
+                ModelState.AddModelError(string.Empty, $"An unexpected error occurred: {ex.Message}");
+                return View("Error", errorModel);
+            }
+        }
+
+
+        [HttpGet("addcourse")]
+        public IActionResult AddCourse() {
+            return View();
+        }
+
+
+        [HttpGet("addlesson")]
+        public IActionResult AddLesson() {
+            return View();
+        }
+
+
+        [HttpGet("addunit")]
+        public IActionResult AddUnit() {
+            return View();
+        }
+
+
+        [HttpGet("addmodule")]
+        public IActionResult AddModule() {
+            return View();
+        }
+
+
+        [HttpGet("editcourse")]
+        public IActionResult UpdateCourse() {
+            return View();
+        }
+
+
+        [HttpGet("deletecourse")]
+        public IActionResult DeleteCourse() {
+            return View();
+        }
+
+
+        ////
+        ///    
+
+        [HttpPost("addcourse")]
+        public async Task<IActionResult> AddCourse(Course course) {
+            var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{User.FindFirstValue(ClaimTypes.NameIdentifier)}", course);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
+        }
+
+
+        [HttpPost("addlesson")]
+        public async Task<IActionResult> AddLesson(Lesson lesson) {
+            var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/Lesson/", lesson);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
+        }
+
+
+        [HttpPost("addunit")]
+        public async Task<IActionResult> AddUnit(Unit unit) {
+            var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/Unit/", unit);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
+        }
+
+
+        [HttpPost("addmodule")]
+        public async Task<IActionResult> AddModule(CourseModule module) {
+            var response = await _httpClient.PostAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/Module/", module);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
+        }
+
+
+        [HttpPost("editcourse")]
+        public async Task<IActionResult> UpdateCourse(Course course) {
+            var response = await _httpClient.PutAsJsonAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{course.CourseId}", course);
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
+        }
+
+
+        [HttpPost("deletecourse")]
+        public async Task<IActionResult> DeleteCourse(int courseId) {
+            var response = await _httpClient.DeleteAsync(_httpClient.BaseAddress.AbsoluteUri + $"api/courses/{courseId}");
+
+            if (response.IsSuccessStatusCode) {
+                return RedirectToAction("Course", "Courses");
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ModelState.AddModelError(string.Empty, errorMessage);
+
+            return View("Error");
         }
 
 

@@ -3,6 +3,7 @@ using DirectDbWebApp.Services;
 using System.Data;
 using System.Text.Json;
 using Npgsql;
+using DirectDbWebApp.Domain;
 
 namespace DirectDbWebApp.Controllers {
     [ApiController]
@@ -67,15 +68,12 @@ namespace DirectDbWebApp.Controllers {
 
         // POST: api/Unit
         [HttpPost]
-        public async Task<IActionResult> CreateUnit([FromBody] JsonElement body) {
-            if (!body.TryGetProperty("module_id", out JsonElement moduleIdElement) || !body.TryGetProperty("title", out JsonElement titleElement)) {
-                return BadRequest(new { Message = "Invalid input. 'module_id' and 'title' are required." });
-            }
+        public async Task<IActionResult> CreateUnit([FromBody] Unit unit) {
 
-            var moduleId = moduleIdElement.GetInt32();
-            var title = titleElement.GetString();
-            var description = body.TryGetProperty("description", out JsonElement descriptionElement) ? descriptionElement.GetString() : null;
-            var sequence = body.TryGetProperty("sequence", out JsonElement sequenceElement) ? sequenceElement.GetInt32() : (int?)null;
+            var moduleId = unit.ModuleId;
+            var title = unit.Title;
+            var description = unit.Description;
+            var sequence = unit.Sequence;
 
             var query = "INSERT INTO Unit (module_id, title, description, sequence) " +
                         $"VALUES ({moduleId}, '{title}', '{description}', {sequence}) RETURNING unit_id";

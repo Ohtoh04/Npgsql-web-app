@@ -12,7 +12,8 @@ namespace DirectDbWebApp.Domain {
         public string? Content { get; set; }
         public int? Sequence { get; set; }
         public int UnitId { get; set; }
-        public JsonElement CorrectSolution { get; set; }
+        public string? CorrectSolution { get; set; } // Change type if needed
+
 
     }
 }

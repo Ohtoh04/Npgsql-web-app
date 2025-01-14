@@ -7,7 +7,7 @@ using DirectDbWebApp.Domain;
 
 namespace DirectDbWebApp.Controllers {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api")]
     public class LessonApiController : ControllerBase {
         private readonly string _connectionString;
 
@@ -16,7 +16,7 @@ namespace DirectDbWebApp.Controllers {
         }
 
         // GET: api/Lesson
-        [HttpGet]
+        [HttpGet("Lesson")]
         public async Task<IActionResult> GetLessons() {
             var query = "SELECT lesson_id, unit_id, title, content, correct_solution, sequence FROM Lesson";
 
@@ -35,7 +35,7 @@ namespace DirectDbWebApp.Controllers {
                         UnitId = reader.GetInt32(1),
                         Title = reader.GetString(2),
                         Content = reader.IsDBNull(3) ? null : reader.GetString(3),
-                        CorrectSolution = reader.IsDBNull(4) ? default : JsonDocument.Parse(reader.GetString(4)).RootElement,
+                        CorrectSolution = reader.IsDBNull(4) ? default : reader.GetString(4),
                         Sequence = reader.IsDBNull(5) ? default : reader.GetInt32(5)
                     });
                 }
@@ -77,7 +77,7 @@ namespace DirectDbWebApp.Controllers {
         }
 
         // GET: api/Lesson/{id}
-        [HttpGet("{id}")]
+        [HttpGet("Lesson/{id}")]
         public async Task<IActionResult> GetLessonById(int id) {
             var query = "SELECT lesson_id, unit_id, title, content, correct_solution, sequence FROM Lesson WHERE lesson_id = @id";
 
@@ -96,7 +96,7 @@ namespace DirectDbWebApp.Controllers {
                         UnitId = reader.GetInt32(1),
                         Title = reader.GetString(2),
                         Content = reader.IsDBNull(3) ? null : reader.GetString(3),
-                        CorrectSolution = reader.IsDBNull(4) ? default : JsonDocument.Parse(reader.GetString(4)).RootElement,
+                        CorrectSolution = reader.IsDBNull(4) ? default : reader.GetString(4),
                         Sequence = reader.IsDBNull(5) ? default : reader.GetInt32(5)
                     };
 

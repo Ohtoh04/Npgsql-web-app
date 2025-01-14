@@ -21,8 +21,8 @@ namespace DirectDbWebApp.Controllers {
         public async Task<IActionResult> GetAllCourses() {
             var query = @"SELECT c.course_id, c.title, c.rating, cat.name AS category
                           FROM Course c
-                          JOIN CourseCategory cc ON c.course_id = cc.course_id
-                          JOIN Category cat ON cc.category_id = cat.category_id";
+                          LEFT JOIN CourseCategory cc ON c.course_id = cc.course_id
+                          LEFT JOIN Category cat ON cc.category_id = cat.category_id";
             var courses = new List<object>();
 
             try {
@@ -189,7 +189,7 @@ namespace DirectDbWebApp.Controllers {
 
         [HttpPost("courses/{userId}")]
         public async Task<IActionResult> CreateCourse([FromBody] Course course, string userId) {
-            var insertCourseQuery = @"INSERT INTO Course (title, description, coursetype, price, duration, rating)
+            var insertCourseQuery = @"INSERT INTO course (title, description, coursetype, price, duration, rating)
                               VALUES (@Title, @Description, @CourseType, @Price, @Duration, @Rating)
                               RETURNING course_id;";
 
@@ -206,7 +206,7 @@ namespace DirectDbWebApp.Controllers {
                 try {
                     // Verify user role
                     await using (var verificationCmd = new NpgsqlCommand(verificationQuery, conn, transaction)) {
-                        verificationCmd.Parameters.AddWithValue("@UserId", userId);
+                        verificationCmd.Parameters.AddWithValue("@UserId", Convert.ToInt32(userId));
 
                         var verificationResult = await verificationCmd.ExecuteScalarAsync();
                         if (verificationResult == null) {
@@ -281,7 +281,7 @@ namespace DirectDbWebApp.Controllers {
         // Delete a course
         [HttpDelete("courses/{id}")]
         public async Task<IActionResult> DeleteCourse(int id) {
-            var query = "DELETE FROM Course WHERE course_id = @Id";
+            var query = "DELETE FROM course WHERE course_id = @Id";
 
             try {
                 await using var conn = new NpgsqlConnection(_connectionString);
@@ -298,8 +298,8 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
-        [HttpGet("coursedata/{id}")]
-        public async Task<IActionResult> GetCourseData(int id) {
+        [HttpGet("coursedata/{id}/{userId}")]
+        public async Task<IActionResult> GetCourseData(int id, string userId) {
             var query = @"
                 SELECT 
                     c.course_id AS CourseId,
@@ -319,9 +319,9 @@ namespace DirectDbWebApp.Controllers {
                     u.description AS UnitDescription,
                     u.sequence AS UnitSequence,
                     l.lesson_id AS LessonId,
-                    l.title AS LEssonTitle,
+                    l.title AS LessonTitle,
                     l.content AS LessonContent,
-                    l.sequence AS LessonSequence,
+                    l.sequence AS LessonSequence
                 FROM Course c
                 LEFT JOIN Module m ON c.course_id = m.course_id
                 LEFT JOIN Unit u ON m.module_id = u.module_id
@@ -331,12 +331,10 @@ namespace DirectDbWebApp.Controllers {
 
             var queryVerification = @"
                 SELECT *
-                FROM CourseUser
+                FROM courseuser
                 WHERE course_id = @courseId AND user_id = @userId;";
 
             try {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
                 if (string.IsNullOrEmpty(userId)) {
                     return Unauthorized(new { Message = "User is not authenticated." });
                 }
@@ -355,7 +353,7 @@ namespace DirectDbWebApp.Controllers {
                     // Verify user-course relationship
                     await using var verificationCmd = new NpgsqlCommand(queryVerification, conn, transaction);
                     verificationCmd.Parameters.AddWithValue("@courseId", id);
-                    verificationCmd.Parameters.AddWithValue("@userId", userId);
+                    verificationCmd.Parameters.AddWithValue("@userId", Int32.Parse(userId));
 
                     var hasAccess = false;
                     await using (var verificationReader = await verificationCmd.ExecuteReaderAsync()) {
@@ -383,7 +381,8 @@ namespace DirectDbWebApp.Controllers {
                                     Price = reader["CoursePrice"] == DBNull.Value ? (decimal?)null : (decimal)reader["CoursePrice"],
                                     Duration = reader["CourseDuration"] == DBNull.Value ? (TimeSpan?)null : (TimeSpan)reader["CourseDuration"],
                                     DateCreated = (DateTime)reader["CourseDateCreated"],
-                                    Rating = reader["CourseRating"] == DBNull.Value ? (decimal?)null : (decimal)reader["CourseRating"]
+                                    Rating = reader["CourseRating"] == DBNull.Value ? (decimal?)null : (decimal)reader["CourseRating"],
+                                    Modules = new List<CourseModule>() // Ensure initialization
                                 };
                             }
 
@@ -396,7 +395,8 @@ namespace DirectDbWebApp.Controllers {
                                         CourseId = courseData.CourseId,
                                         Title = reader["ModuleTitle"].ToString(),
                                         Description = reader["ModuleDescription"].ToString(),
-                                        Sequence = reader["ModuleSequence"] == DBNull.Value ? (int?)null : (int)reader["ModuleSequence"]
+                                        Sequence = reader["ModuleSequence"] == DBNull.Value ? (int?)null : (int)reader["ModuleSequence"],
+                                        Units = new List<Unit>() // Ensure initialization
                                     };
                                     modulesDictionary[moduleId.Value] = module;
                                     courseData.Modules.Add(module);
@@ -426,7 +426,7 @@ namespace DirectDbWebApp.Controllers {
                                             UnitId = unit.UnitId,
                                             Title = reader["LessonTitle"].ToString(),
                                             Content = reader["LessonContent"].ToString(),
-                                            Sequence = reader["LessonSequence"] == DBNull.Value ? (int?)null : (int)reader["LessonSequence"],
+                                            Sequence = reader["LessonSequence"] == DBNull.Value ? (int?)null : (int?)reader["LessonSequence"],
                                         });
                                     }
                                 }
@@ -454,5 +454,30 @@ namespace DirectDbWebApp.Controllers {
             }
         }
 
+        [HttpPost("courseuser/{courseId}/{userId}")]
+        public async Task<IActionResult> CreateCourseUser([FromBody] EnrollmentRequest enrollmentData) {
+            var query = @"INSERT INTO courseuser (course_id, user_id, relation_type)
+                          VALUES (@CourseId, @UserId, 'Student')";
+            try {
+                var CourseId = enrollmentData.CourseId;
+                var Userid = enrollmentData?.UserId;
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@CourseId", CourseId);
+                cmd.Parameters.AddWithValue("@UserId", Userid);
+                return NoContent();
+
+            } catch (Exception ex) {
+                return StatusCode(500, new { Message = ex.Message });
+            }
+        }
+
+    }
+
+    public class EnrollmentRequest {
+        public int CourseId { get; set; }
+        public string UserId { get; set; }
     }
 }

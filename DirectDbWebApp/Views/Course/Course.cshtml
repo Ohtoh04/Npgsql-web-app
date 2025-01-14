@@ -31,7 +31,7 @@
                                                     @foreach (var lesson in unit.Lessons.OrderBy(l => l.Sequence))
                                                     {
                                                         <li>
-                                                            <a href="#" class="link-dark rounded">@lesson.Title</a>
+                                                            <a href="@Url.Action("Lesson", new { id = lesson.LessonId })" class="link-dark rounded">@lesson.Title</a>
                                                         </li>
                                                     }
                                                 </ul>

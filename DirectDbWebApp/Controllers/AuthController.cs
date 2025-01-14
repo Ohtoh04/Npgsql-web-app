@@ -20,20 +20,20 @@ public class AuthController : Controller {
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginUser([FromForm] string username, [FromForm] string password) {
-        string role = "Student";
         // Validate the user's credentials using your database
-        var UserId = await AuthenticateUser(username, password);
-        if (UserId==-1) {
+        var (userId, role) = await AuthenticateUser(username, password);
+
+        if (userId == -1) {
             return Unauthorized("Invalid username or password");
         }
 
         // Create claims for the user
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, role),
-            new Claim(ClaimTypes.NameIdentifier, UserId.ToString()),
-        };
+        new Claim(ClaimTypes.Name, username),
+        new Claim(ClaimTypes.Role, role),
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+    };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -50,6 +50,7 @@ public class AuthController : Controller {
 
         return Ok("Login successful");
     }
+
 
     [HttpGet("login")]
     public IActionResult Login() {
@@ -102,8 +103,8 @@ public class AuthController : Controller {
 
 
     // auxilliary function that returns -1 if user doesnt exist or credentials dont match and UserId if authentication is successful
-    private async Task<int> AuthenticateUser(string username, string password) {
-        var query = "SELECT user_id,password_hash FROM dbuser WHERE username = @username";
+    private async Task<(int UserId, string Role)> AuthenticateUser(string username, string password) {
+        var query = "SELECT user_id, password_hash, role FROM dbuser WHERE username = @username";
 
         try {
             await using var conn = new NpgsqlConnection(_connectionString);
@@ -115,16 +116,23 @@ public class AuthController : Controller {
             await using var reader = await cmd.ExecuteReaderAsync();
             if (await reader.ReadAsync()) {
                 var storedHash = reader["password_hash"].ToString();
-                var UserId = (int)reader["user_id"];
+                var userId = (int)reader["user_id"];
+                var role = reader["role"].ToString();
+
                 string enteredHash = PasswordHasher.HashPassword(password);
-                return storedHash == enteredHash ? UserId : -1;
+
+                if (storedHash == enteredHash) {
+                    return (userId, role);
+                }
             }
 
-            return -1;
+            return (-1, null); // Return -1 for UserId and null for Role if authentication fails
         } catch (Exception ex) {
             Console.WriteLine(ex);
-            return -1;
+            return (-1, null); // Handle exceptions and return failure
         }
     }
+
+
 
 }

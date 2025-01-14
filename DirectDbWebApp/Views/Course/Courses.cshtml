@@ -7,22 +7,18 @@
 <div class="container mt-5">
     <h2 class="text-center">Courses</h2>
 
-    <!-- Форма для фильтрации -->
     <form method="post" asp-controller="Course" asp-action="CoursesFiltered" class="mb-4">
         <div class="row g-3">
-            <!-- Поле для минимального рейтинга -->
             <div class="col-md-2">
                 <label for="minRating" class="form-label">Min Rating</label>
                 <input type="number" step="0.1" min="0" max="5" class="form-control" id="minRating" name="minRating" placeholder="0-5">
             </div>
 
-            <!-- Поле для названия курса -->
             <div class="col-md-4">
                 <label for="courseTitle" class="form-label">Title</label>
                 <input type="text" class="form-control" id="courseTitle" name="title" placeholder="Course title">
             </div>
 
-            <!-- Селектор для типа курса -->
             <div class="col-md-2">
                 <label for="courseType" class="form-label">Type</label>
                 <select class="form-select" id="courseType" name="type">
@@ -76,6 +72,10 @@
                             <h6 class="card-subtitle mb-2 text-muted">Category: @course.category</h6>
                             <p class="card-text">Rating: @course.rating</p>
                             <a href="@Url.Action("Course", new { id = course.courseId })" class="btn btn-primary">View Details</a>
+                            <form asp-action="EnrollCourse" method="post">
+                                <input type="hidden" name="courseId" value="@course.courseId" />
+                                <button type="submit" class="btn btn-primary">Enroll</button>
+                            </form>
                         </div>
                     </div>
                 </div>
