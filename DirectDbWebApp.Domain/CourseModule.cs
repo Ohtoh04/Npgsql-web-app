@@ -11,7 +11,7 @@ namespace DirectDbWebApp.Domain {
         public string Title { get; set; } 
         public string Description { get; set; } 
         public int? Sequence { get; set; } 
-        public Course Course { get; set; }
+        public Course? Course { get; set; }
         public ICollection<Unit> Units { get; set; } = new List<Unit>();
     }
 
